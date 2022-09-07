@@ -1,164 +1,141 @@
 #ifndef MAIN_H
 #define MAIN_H
-#define UNUSED(x) (void)(x)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+/*
+ * File: main.h
+ * Auth: David Oluwadamilare
+ *       Eyebiokin Olayinka
+ */
+
+#include <fcntl.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <limits.h>
-#include <signal.h>
-#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+
+#define END_OF_FILE -2
+#define EXIT -3
+
+/* Global environemnt */
+extern char **environ;
+/* Global program name */
+char *name;
+/* Global history counter */
+int hist;
 
 /**
- * struct history - An structure for each command readed
- * @str: string
- * @counter: number of imputs
- * @next: Next element
+ * struct list_s - A new struct type defining a linked list.
+ * @dir: A directory path.
+ * @next: A pointer to another struct list_s.
  */
-
-typedef struct history
+typedef struct list_s
 {
-  char *str;
-  int counter;
-  struct history *next;
-
-} history_t;
-
-/**fixing**/
-/**** Estructura con las posibles variables que vamos a usar ****/
-/**
- * struct variables - variables
- * @array_tokens: array of tokens(arguments)
- * @buffer: buffer of command
- * @status: to handle exit status
- * @argv: gets arguments at opening of shell
- * @counter: counts commands entered
- * @env: has enviroment
- * @commands: have commands.
- * @history: structure
- * @invert: structure
- */
-typedef struct variables
-{
-  char **array_tokens;
-  char *buffer;
-  int status;
-  char **argv;
-  int counter;
-  char **env;
-  char **commands;
-  history_t *history;
-  history_t *invert;
-
-} vars_t;
+char *dir;
+struct list_s *next;
+} list_t;
 
 /**
- * struct builtins - struct for the builtin functions
- * @name: name of builtin command
- * @f: function for corresponding builtin
+ * struct builtin_s - A new struct type defining builtin commands.
+ * @name: The name of the builtin command.
+ * @f: A function pointer to the builtin command's function.
  */
-typedef struct builtins
+typedef struct builtin_s
 {
-  char *name;
-  void (*f)(vars_t *);
-} builtins_t;
+char *name;
+int (*f)(char **argv, char **front);
+} builtin_t;
 
-/******Some String operations and manipulation******/
-char *_strdup(char *strtodup);
-int _strcmpr(char *strcmp1, char *strcmp2);
-char *_strcat(char *strc1, char *strc2);
-ssize_t _puts(char *str);
-int _strlen(char *str);
-void print_str(char *str, int new_line);
-int _write_char(char c);
-int print_number(int n);
+/**
+ * struct alias_s - A new struct defining aliases.
+ * @name: The name of the alias.
+ * @value: The value of the alias.
+ * @next: A pointer to another struct alias_s.
+ */
+typedef struct alias_s
+{
+char *name;
+char *value;
+struct alias_s *next;
+} alias_t;
 
-/*** BUILTINGS PROTOTYPES ****/
-void (*check_for_builtins(vars_t *vars))(vars_t *vars);
-void new_exit(vars_t *vars);
-void _env(vars_t *vars);
-void new_setenv(vars_t *vars);
-void new_unsetenv(vars_t *vars);
-void new_help(vars_t *vars);
-void new_cd(vars_t *vars);
+/* Global aliases linked list */
+alias_t *aliases;
 
-/** functions related to tokenizer **/
-char **tokenizer(char *buffer, char *delimiter);
-unsigned int check_if_match(char c, const char *str);
-char **_realloc(char **ptr, size_t *size);
-char *new_strtok(char *str, const char *delim);
+/* Main Helpers */
+ssize_t _getline(char **lineptr, size_t *n, FILE *stream);
+void *_realloc(void *ptr, unsigned int old_size, unsigned int new_size);
+char **_strtok(char *line, char *delim);
+char *get_location(char *command);
+list_t *get_path_dir(char *path);
+int execute(char **args, char **front);
+void free_list(list_t *head);
+char *_itoa(int num);
 
-/** second tokenizer**/
-char **tokenize(int token_count, char *line, const char *delimiter);
-char **token_interface(char *line, const char *delimiter, int token_count);
-int count_token(char *line, const char *delimiter);
+/* Input Helpers */
+void handle_line(char **line, ssize_t read);
+void variable_replacement(char **args, int *exe_ret);
+char *get_args(char *line, int *exe_ret);
+int call_args(char **args, char **front, int *exe_ret);
+int run_args(char **args, char **front, int *exe_ret);
+int handle_args(int *exe_ret);
+int check_args(char **args);
+void free_args(char **args, char **front);
+char **replace_aliases(char **args);
 
-/** functions related ask external shell, ask the path**/
-void check_for_path(vars_t *vars);
+/* String functions */
+int _strlen(const char *s);
+char *_strcat(char *dest, const char *src);
+char *_strncat(char *dest, const char *src, size_t n);
+char *_strcpy(char *dest, const char *src);
+char *_strchr(char *s, char c);
+int _strspn(char *s, char *accept);
+int _strcmp(char *s1, char *s2);
+int _strncmp(const char *s1, const char *s2, size_t n);
 
-/** function to handle error messages, used to help exit function*/
-void _puts_error(char *str);
-void prints_error_msg(vars_t *vars, char *msg);
-char *integer_converter(unsigned int count);
+/* Builtins */
+int (*get_builtin(char *command))(char **args, char **front);
+int shellhsh_exit(char **args, char **front);
+int shellhsh_env(char **args, char __attribute__((__unused__)) **front);
+int shellhsh_setenv(char **args, char __attribute__((__unused__)) **front);
+int shellhsh_unsetenv(char **args, char __attribute__((__unused__)) **front);
+int shellhsh_cd(char **args, char __attribute__((__unused__)) **front);
+int shellhsh_alias(char **args, char __attribute__((__unused__)) **front);
+int shellhsh_help(char **args, char __attribute__((__unused__)) **front);
 
-/** function to help exit builting*/
-int _atoi(char *str);
+/* Builtin Helpers */
+char **_copyenv(void);
+void free_env(void);
+char **_getenv(const char *var);
 
-/** functions de help env builting*/
-/*this to get enviroment*/
-char **make_enviroment(char **env);
-void free_env(char **env);
+/* Error Handling */
+int create_error(char **args, int err);
+char *error_env(char **args);
+char *error_1(char **args);
+char *error_2_exit(char **args);
+char *error_2_cd(char **args);
+char *error_2_syntax(char **args);
+char *error_126(char **args);
+char *error_127(char **args);
 
-/**New_help functions**/
-void new_help_exit(vars_t *vars);
-void new_help_help(vars_t *vars);
-void new_help_cd(vars_t *vars);
-void new_help_env(vars_t *vars);
-void new_help_history(vars_t *vars);
-void new_help_unalias(vars_t *vars);
-void new_help_unset(vars_t *vars);
-void new_help_unsetenv(vars_t *vars);
-void new_help_setenv(vars_t *vars);
-void new_help_alias(vars_t *vars);
-void new_help_else(vars_t *vars);
+/* Linkedlist Helpers */
+alias_t *add_alias_end(alias_t **head, char *name, char *value);
+void free_alias_list(alias_t *head);
+list_t *add_node_end(list_t **head, char *dir);
+void free_list(list_t *head);
 
-/** FUNCTIONS FOR SETENV AND UNSETENV**/
-void new_setenv(vars_t *vars);
-void add_key(vars_t *vars);
-char *add_value(char *key, char *value);
-char **find_key(char **env, char *key);
-void setenv_cd(char **args, vars_t *vars);
-void chdir_to_env(vars_t *vars, char *str);
+void help_all(void);
+void help_alias(void);
+void help_cd(void);
+void help_exit(void);
+void help_help(void);
+void help_env(void);
+void help_setenv(void);
+void help_unsetenv(void);
+void help_history(void);
 
-/** ask the path **/
-void fork_child(vars_t vars);
-char *path_finder(vars_t vars, char *command);
-int find_env_index(vars_t vars, char *str);
-char **tokenize_path(vars_t vars, int index, char *str);
-char *search_directories(char **path_tokens, char *command);
-char *build_path(char *directory, char *command);
-
-/** More handle error messages**/
-void error_printing(char *av, int count, char *command);
-void exec_error(char *av, int count, char *tmp_command);
-void simple_error(void);
-void print_cd_1(vars_t *vars);
-void print_cd_2(vars_t *vars);
-
-/**history build function**/
-void new_history(vars_t *vars);
-void *add_nodeint(history_t **head, char *str);
-void free_listint(history_t *head);
-ssize_t _puts3(char *str);
-void print_message(char *str);
-/** handles signals**/
-
-void end_of_file(char *buffer);
-unsigned int sig_flag;
-
-
+int proc_file_commands(char *file_path, int *exe_ret);
 #endif /* MAIN_H */
