@@ -1,0 +1,6 @@
+.TH hsh 1 "August 28, 2022" "1.0" "hsh General Commands Manual"
+
+.SH NAME
+
+.B simple_shell - hsh
+- command line interpreter or shell
